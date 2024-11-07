@@ -12,7 +12,7 @@ application = ApplicationBuilder().token(constants.BOT_TOKEN).build()
 config = load_config()
 for chat_id in config.keys():
     posting_interval: int = config[chat_id].get("posting_interval", 3600)
-    application.job_queue.run_repeating(send_periodic_message, interval=5, first=0, chat_id=chat_id)
+    application.job_queue.run_repeating(send_periodic_message, interval=posting_interval, first=0, chat_id=chat_id)
 
 # Register the message handlers
 application.add_handler(CommandHandler("addpair", filters=filters.COMMAND, callback=handle_add_pair))
