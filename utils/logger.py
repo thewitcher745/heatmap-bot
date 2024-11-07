@@ -9,4 +9,3 @@ logger = logging.getLogger(__name__)
 
 # Suppress logs from the httpx package
 logging.getLogger('httpx').setLevel(logging.CRITICAL)
-
