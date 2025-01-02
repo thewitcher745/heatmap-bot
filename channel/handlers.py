@@ -2,6 +2,7 @@ import os.path
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from channel.channel_utils import get_image_caption
 from utils.config_manager import save_config, load_config
 from utils.logger import logger
 from data.chart import Chart
@@ -130,14 +131,7 @@ async def send_periodic_chart(context: ContextTypes.DEFAULT_TYPE) -> None:
     chart.download_chart()
 
     for pair in pair_list:
-        caption = f"""
-⚡️ #{pair} Liquidation Heatmap ⚡️
-
-4 Hourly Update 🔔
-
-The color range is between Purple to Yellow!
-
-Yellow Represents Higher Number of Liquidation Levels."""
+        caption = get_image_caption(pair)
 
         output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
 
@@ -173,14 +167,7 @@ async def handle_current_chart(update: Update, context: ContextTypes.DEFAULT_TYP
     chart = Chart(pair)
     chart.download_chart()
 
-    caption = f"""
-⚡️ #{pair} Liquidation Heatmap ⚡️
-
-4 Hourly Update 🔔
-
-The color range is between Purple to Yellow!
-
-Yellow Represents Higher Number of Liquidation Levels."""
+    caption = get_image_caption(pair)
 
     output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
 

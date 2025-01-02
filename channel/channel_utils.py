@@ -37,3 +37,18 @@ def initiate_periodic_charting(application):
         posting_interval: int = config[chat_id].get("posting_interval", 3600)
         first_interval = get_seconds_until_next_interval(posting_interval)
         application.job_queue.run_repeating(send_periodic_chart, interval=posting_interval, first=first_interval, chat_id=chat_id)
+
+
+def get_image_caption(pair):
+    caption = f"""
+⚡️ #{pair} Liquidation Heatmap ⚡️
+
+4 Hourly Update 🔔
+
+The color range is between Purple to Yellow!
+
+Yellow Represents Higher Number of Liquidation Levels.
+
+https://t.me/cryptoliquidationheatmap"""
+
+    return caption
