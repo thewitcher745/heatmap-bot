@@ -11,7 +11,7 @@ import constants
 
 
 class Chart:
-    def __init__(self, pair):
+    def __init__(self, pair_list: list | str):
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')  # Run in headless mode
 
@@ -28,10 +28,14 @@ class Chart:
 
         self.download_dir = download_dir
         self.driver = driver
-        self.pair = pair
 
-        # The path of the final file
-        self.output_path = None
+        # If a single pair is given instead of a list of pairs, convert it to a list to standardize it.
+        if isinstance(pair_list, list):
+            self.pair_list = pair_list
+        else:
+            self.pair_list = [pair_list]
+
+        self.download_dir = download_dir
 
     def click_element(self, css_selector):
         # Simply click on an element given its CSS selector. Replace : and - characters with \: and \-
@@ -86,7 +90,7 @@ class Chart:
 
         return location, size
 
-    def crop_and_save_chart(self, location, size):
+    def crop_and_save_charts(self, pair: str, location, size):
         # This function takes the location and size of the element, screenshots  the webpage, and then crops the full screenshot to only leave the
         # chart intact. It saves both files to /output_images/.
 
@@ -103,8 +107,8 @@ class Chart:
         cropped_image = image.crop((left, top, right, bottom))
 
         # Save the cropped image
-        output_path = os.path.join(self.download_dir, f'heatmap_{self.pair}.png')
-        self.output_path = output_path
+        output_path = os.path.join(self.download_dir, f'heatmap_{pair}.png')
+
         cropped_image.save(output_path)
 
     def download_chart(self):
@@ -115,21 +119,24 @@ class Chart:
 
             self.click_element(constants.SYMBOL_TOGGLE_BUTTON_SELECTOR)
             time.sleep(1)  # Just to be safe
-            self.click_element(constants.SYMBOL_DROPDOWN_BUTTON_SELECTOR)
 
-            self.select_pair_from_list(self.pair)
+            # Find each pair in the pair_list property in the list and save its chart
+            for pair in self.pair_list:
+                self.click_element(constants.SYMBOL_DROPDOWN_BUTTON_SELECTOR)
 
-            # Wait until the chart element appears.
-            element = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, constants.CHART_ELEMENT_SELECTOR))
-            )
+                self.select_pair_from_list(pair)
 
-            # Wait for element to load
-            time.sleep(5)
+                # Wait until the chart element appears.
+                element = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, constants.CHART_ELEMENT_SELECTOR))
+                )
 
-            location, size = self.get_chart_into_view(element)
+                # Wait for element to load
+                time.sleep(5)
 
-            self.crop_and_save_chart(location, size)
+                location, size = self.get_chart_into_view(element)
+
+                self.crop_and_save_charts(pair, location, size)
 
         finally:
             self.driver.quit()
