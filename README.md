@@ -76,4 +76,4 @@ on-demand by interacting with the bot manually or by using a command in a channe
 - Completely changed how the chart is made. Now screenshots the heatmap from a website, after selecting the pair from the website GUI by webscraping.
   First the website is loaded, then the chart is scrolled into view, then the whole website gets screenshotted before being cropped using PIL.
 - Added a command to generate the liquidation heatmap on-demand (/currentchart).
-- Removed timeframe setting for the pairs, since the website does not offer timeframe selection.
+- Removed timeframe setting for the pairs, since the website does not offer timeframe selection. 
