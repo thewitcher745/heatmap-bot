@@ -123,17 +123,13 @@ async def send_periodic_chart(context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = str(context.job.chat_id)
 
     config = load_config()
-    print(config[chat_id]["pair_info"])
+    pair_list = [pair_info_item["pair"].replace("USDT", "").replace("USD", "") for pair_info_item in config[chat_id]["pair_info"]]
 
-    for pair_info_item in config[chat_id]["pair_info"]:
-        pair = pair_info_item["pair"]
+    # Initialize the Chart class and download the chart
+    chart = Chart(pair_list)
+    chart.download_chart()
 
-        # Initialize the Chart class and download the chart
-        pair = pair.replace("USDT", "").replace("USD", "")
-
-        chart = Chart(pair)
-        chart.download_chart()
-
+    for pair in pair_list:
         caption = f"""
 ⚡️ #{pair} Liquidation Heatmap ⚡️
 
