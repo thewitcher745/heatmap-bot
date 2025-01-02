@@ -76,4 +76,13 @@ on-demand by interacting with the bot manually or by using a command in a channe
 - Completely changed how the chart is made. Now screenshots the heatmap from a website, after selecting the pair from the website GUI by webscraping.
   First the website is loaded, then the chart is scrolled into view, then the whole website gets screenshotted before being cropped using PIL.
 - Added a command to generate the liquidation heatmap on-demand (/currentchart).
-- Removed timeframe setting for the pairs, since the website does not offer timeframe selection. 
+- Removed timeframe setting for the pairs, since the website does not offer timeframe selection.
+
+### ver b0.4
+
+- Images are now produced in batches and in bulk, if the argument given to the `Chart.__init__` method is a list. If it isn't, the image is produced
+  normally.
+- Queuing the chart sending is now done on the basis of 00:00:00 UTC, hence it doesn't matter when the bot is started, the images always get send at a
+  fixed time during the day, which is 1 second after any time, the difference of which to the 00:00:00 UTC time is divisible by the interval. So a 4h
+  interval would send images at 00:00:01, 04:00:01, 08:00:01, etc.
+- Modularized and cleaned up app.py, moved the job queue and other functions to different `channel_utils.py` module.
