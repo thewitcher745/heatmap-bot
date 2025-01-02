@@ -16,3 +16,9 @@ def get_pair_data(symbol: str, timeframe: str, limit=70) -> pd.DataFrame:
     df = df.set_index('time')
 
     return df
+
+
+async def send_image_with_caption(image_path, context, chat_id, caption):
+    # Send the chart image to the channel
+    with open(image_path, 'rb') as photo:
+        await context.bot.send_photo(chat_id=chat_id, photo=photo, caption=caption)

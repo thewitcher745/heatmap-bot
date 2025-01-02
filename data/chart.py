@@ -13,7 +13,7 @@ import constants
 class Chart:
     def __init__(self, pair):
         options = webdriver.ChromeOptions()
-        # options.add_argument('--headless')  # Run in headless mode
+        options.add_argument('--headless')  # Run in headless mode
 
         # Set the download directory.
         download_dir = os.path.join(os.path.abspath(os.getcwd()), 'output_images')
@@ -29,6 +29,9 @@ class Chart:
         self.download_dir = download_dir
         self.driver = driver
         self.pair = pair
+
+        # The path of the final file
+        self.output_path = None
 
     def click_element(self, css_selector):
         # Simply click on an element given its CSS selector. Replace : and - characters with \: and \-
@@ -93,14 +96,15 @@ class Chart:
 
         # Open the screenshot and crop the desired area
         image = Image.open(screenshot_path)
-        left = location['x']
-        top = location['y']
-        right = left + size['width']
-        bottom = top + size['height']
+        left = location['x'] - constants.CHART_X_OFFSET
+        top = location['y'] - constants.CHART_Y_OFFSET
+        right = location['x'] + size['width'] + constants.CHART_X_OFFSET
+        bottom = location['y'] + size['height'] + constants.CHART_Y_OFFSET
         cropped_image = image.crop((left, top, right, bottom))
 
         # Save the cropped image
-        output_path = os.path.join(self.download_dir, 'element_screenshot.png')
+        output_path = os.path.join(self.download_dir, f'heatmap_{self.pair}.png')
+        self.output_path = output_path
         cropped_image.save(output_path)
 
     def download_chart(self):
