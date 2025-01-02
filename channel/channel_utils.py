@@ -20,8 +20,8 @@ def get_seconds_until_next_interval(interval):
     seconds_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
     seconds_until_next_interval = interval - (seconds_since_midnight % interval)
 
-    # +1 to make sure the candles are formed, I guess?
-    return seconds_until_next_interval + 1
+    # +30 to make sure the candles are formed, I guess?
+    return seconds_until_next_interval + 30
 
 
 # Error handler function
@@ -37,18 +37,3 @@ def initiate_periodic_charting(application):
         posting_interval: int = config[chat_id].get("posting_interval", 3600)
         first_interval = get_seconds_until_next_interval(posting_interval)
         application.job_queue.run_repeating(send_periodic_chart, interval=posting_interval, first=first_interval, chat_id=chat_id)
-
-
-def get_image_caption(pair):
-    caption = f"""
-⚡️ #{pair} Liquidation Heatmap ⚡️
-
-4 Hourly Update 🔔
-
-The color range is between Purple to Yellow!
-
-Yellow Represents Higher Number of Liquidation Levels.
-
-https://t.me/cryptoliquidationheatmap"""
-
-    return caption
