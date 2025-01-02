@@ -1,4 +1,4 @@
-from datetime import datetime
+import os.path
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -143,7 +143,9 @@ The color range is between Purple to Yellow!
 
 Yellow Represents Higher Number of Liquidation Levels."""
 
-        await send_image_with_caption(chart.output_path, context, chat_id, caption)
+        output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
+
+        await send_image_with_caption(output_path, context, chat_id, caption)
 
 
 async def handle_current_chart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -184,4 +186,6 @@ The color range is between Purple to Yellow!
 
 Yellow Represents Higher Number of Liquidation Levels."""
 
-    await send_image_with_caption(chart.output_path, context, chat_id, caption)
+    output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
+
+    await send_image_with_caption(output_path, context, chat_id, caption)
