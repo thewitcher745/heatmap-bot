@@ -2,11 +2,25 @@ import os.path
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from channel.channel_utils import get_image_caption
 from utils.config_manager import save_config, load_config
 from utils.logger import logger
 from data.chart import Chart
 from data.utils import send_image_with_caption
+
+
+def get_image_caption(pair):
+    caption = f"""
+⚡️ #{pair} Liquidation Heatmap ⚡️
+
+4 Hourly Update 🔔
+
+The color range is between Purple to Yellow!
+
+Yellow Represents Higher Number of Liquidation Levels.
+
+https://t.me/cryptoliquidationheatmap"""
+
+    return caption
 
 
 async def handle_add_pair(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
