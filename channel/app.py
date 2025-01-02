@@ -31,3 +31,4 @@ application.add_handler(CommandHandler("currentchart", filters=filters.COMMAND, 
 
 # Start the Bot
 application.run_polling()
+
