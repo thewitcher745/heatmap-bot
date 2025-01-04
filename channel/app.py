@@ -1,8 +1,8 @@
 from telegram.ext import ApplicationBuilder, CommandHandler, filters
 
 import constants
-from channel.handlers import handle_add_pair, handle_show_pairs, handle_set_posting_interval, handle_current_chart, initiate_periodic_charting, \
-    handle_set_mode, handle_set_pair_interval
+from channel.handlers import handle_add_pair, handle_show_pairs, handle_set_posting_interval, handle_current_chart, handle_set_mode, \
+    handle_set_pair_interval, initiate_periodic_charting
 from channel.channel_utils import error_handler
 
 application = ApplicationBuilder().token(constants.BOT_TOKEN).build()
@@ -19,5 +19,6 @@ application.add_handler(CommandHandler("setinterval", filters=filters.COMMAND, c
 application.add_handler(CommandHandler("currentchart", filters=filters.COMMAND, callback=handle_current_chart))
 application.add_handler(CommandHandler("setmode", filters=filters.COMMAND, callback=handle_set_mode))
 application.add_handler(CommandHandler("setpairinterval", filters=filters.COMMAND, callback=handle_set_pair_interval))
+
 # Start the Bot
 application.run_polling()

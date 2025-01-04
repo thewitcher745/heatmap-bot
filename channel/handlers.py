@@ -8,7 +8,8 @@ from utils.config_manager import save_config, load_config
 from utils.logger import logger
 from data.chart import Chart
 from data.utils import send_image_with_caption
-from channel.channel_utils import get_seconds_until_next_interval, get_image_caption, initiate_channel_config
+from channel.channel_utils import get_image_caption, initiate_channel_config
+from channel.scheduler_utils import SimultaneousScheduler, SequentialScheduler
 
 
 def initiate_periodic_charting(application):
@@ -17,51 +18,50 @@ def initiate_periodic_charting(application):
     for chat_id in config.keys():
         if config[chat_id]["mode"] == "simultaneous":
             posting_interval: int = config[chat_id].get("posting_interval", 14400)
-            first_interval = get_seconds_until_next_interval(posting_interval)
-            first_posting_date = datetime.now() + timedelta(seconds=first_interval)
-
             pair_list = config[chat_id]["pair_list"]
 
+            starting_time = SimultaneousScheduler(posting_interval).starting_time
+
             logger.info(
-                f"Started periodic chart generation for {chat_id}, "
+                f"Started periodic chart generation for {chat_id} "
                 f"mode = 'simultaneous', "
                 f"period = {posting_interval}, "
-                f"first posting date {first_posting_date}")
+                f"starting time {starting_time}")
 
             application.job_queue.run_repeating(send_periodic_chart,
                                                 interval=posting_interval,
-                                                first=first_interval,
+                                                first=starting_time,
                                                 chat_id=chat_id,
                                                 data={"pair_list": pair_list,
                                                       "posting_interval": posting_interval,
-                                                      "first_posting_date": first_posting_date})
+                                                      "starting_time": starting_time})
 
         elif config[chat_id]["mode"] == "sequential":
             # If mode is sequential, each pair has its own queue, with the starting point being different but with the same posting_interval.
             # The starting point is determined by the order of the pairs in the list, and the starting points are spaced by the pair_interval value.
-            for i, pair in enumerate(config[chat_id]["pair_list"]):
-                posting_interval: int = config[chat_id].get("posting_interval", 43200)
-                pair_interval: int = config[chat_id].get("pair_interval", 3600)
+            # All the logic for the sequential mode is contained in the scheduler_utils.py file's SequentialScheduler class.
 
-                # Each pair's starting point is determined by their order in the list.
-                first_interval = get_seconds_until_next_interval(posting_interval) + pair_interval * i
-                first_posting_date = datetime.now() + timedelta(seconds=first_interval)
+            posting_interval: int = config[chat_id].get("posting_interval", 43200)
+            pair_interval: int = config[chat_id].get("pair_interval", 3600)
+            pair_list = config[chat_id]["pair_list"]
 
-                logger.info(
-                    f"Started periodic chart generation for {chat_id}, "
-                    f"mode = 'sequential', "
-                    f"pair = {pair}, "
-                    f"period = {posting_interval}, "
-                    f"first posting date {first_posting_date}")
+            scheduler = SequentialScheduler(posting_interval, pair_interval, pair_list)
+            starting_schedule = scheduler.starting_schedule
+
+            for starting_schedule_dict in starting_schedule:
+                pair = starting_schedule_dict['pair']
+                starting_time = starting_schedule_dict['starting_time']
 
                 application.job_queue.run_repeating(send_periodic_chart,
                                                     interval=posting_interval,
-                                                    first=first_interval,
+                                                    first=starting_time,
                                                     chat_id=chat_id,
                                                     data={"pair": pair,
                                                           "posting_interval": posting_interval,
                                                           "pair_interval": pair_interval,
-                                                          "first_posting_date": first_posting_date})
+                                                          "starting_time": starting_time})
+
+            logger.info(scheduler.compose_starting_schedule())
 
 
 async def handle_set_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -202,7 +202,8 @@ async def handle_set_posting_interval(update: Update, context: ContextTypes.DEFA
     save_config(config)
 
     await context.bot.send_message(chat_id=chat_id,
-                                   text=f"✅ Set posting interval to {interval} seconds. The bot needs to be restarted for the changes to take effect.")
+                                   text=f"✅ Set posting interval to {interval} seconds. "
+                                        f"The bot needs to be restarted for the changes to take effect.")
 
 
 async def handle_set_pair_interval(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

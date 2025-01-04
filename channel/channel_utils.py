@@ -5,25 +5,6 @@ from utils.config_manager import load_config, save_config
 from utils.logger import logger
 
 
-def get_seconds_until_next_interval(interval):
-    """
-    Calculate the number of seconds until the next interval.
-
-    Args:
-        interval (int): The interval in seconds.
-
-    Returns:
-        float: The number of seconds until the next interval.
-    """
-
-    now = datetime.now(timezone.utc)
-    seconds_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
-    seconds_until_next_interval = interval - (seconds_since_midnight % interval)
-
-    # +delay to make sure the candles are formed
-    return seconds_until_next_interval + constants.CHART_DELAY_SECONDS
-
-
 # Error handler function
 async def error_handler(update, context):
     logger.error(f"Update {update} caused error {context.error}")
