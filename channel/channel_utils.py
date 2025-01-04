@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
-from channel.handlers import send_periodic_chart
-from utils.config_manager import load_config
+import constants
+from utils.config_manager import load_config, save_config
 from utils.logger import logger
 
 
@@ -20,8 +20,8 @@ def get_seconds_until_next_interval(interval):
     seconds_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
     seconds_until_next_interval = interval - (seconds_since_midnight % interval)
 
-    # +30 to make sure the candles are formed, I guess?
-    return seconds_until_next_interval + 30
+    # +delay to make sure the candles are formed
+    return seconds_until_next_interval + constants.CHART_DELAY_SECONDS
 
 
 # Error handler function
@@ -29,11 +29,45 @@ async def error_handler(update, context):
     logger.error(f"Update {update} caused error {context.error}")
 
 
-def initiate_periodic_charting(application):
-    # Set up a job to send a periodic message every hour
+def get_image_caption(pair, posting_interval: int):
+    # Convert the seconds of posting_interval to hours
+    interval_in_hours = int(posting_interval / 3600)
+
+    caption = f"""
+⚡️ #{pair} Liquidation Heatmap ⚡️
+
+{interval_in_hours} Hourly Update 🔔
+
+The color range is between Purple to Yellow!
+
+Yellow Represents Higher Number of Liquidation Levels.
+
+https://t.me/cryptoliquidationheatmap"""
+
+    return caption
+
+
+def initiate_channel_config(chat_id: str):
+    """
+    Initialize the configuration for a channel, if no config exists.
+
+    Args:
+        chat_id (str): The ID of the channel.
+    """
+
     config = load_config()
-    for chat_id in config.keys():
-        logger.info(f"Started periodic chart generation for {chat_id}")
-        posting_interval: int = config[chat_id].get("posting_interval", 3600)
-        first_interval = get_seconds_until_next_interval(posting_interval)
-        application.job_queue.run_repeating(send_periodic_chart, interval=posting_interval, first=first_interval, chat_id=chat_id)
+
+    if chat_id not in config:
+        config[chat_id] = {
+            "posting_interval": 14400,  # 4 hours by default
+            "mode": "simultaneous",
+            "pair_list": []
+        }
+
+        save_config(config)
+        logger.info(f"Initialized configuration for channel {chat_id}")
+
+    else:
+        logger.info(f"Configuration for channel {chat_id} already exists")
+
+    return config
