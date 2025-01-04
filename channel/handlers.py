@@ -277,7 +277,6 @@ async def handle_current_chart(update: Update, context: ContextTypes.DEFAULT_TYP
     chat_id = str(update.channel_post.chat.id)
     title = update.channel_post.chat.title
     message_text = update.channel_post.text
-    posting_interval = int(context.job.data["posting_interval"])
 
     # Log the message
     logger.info(f"Current chart request message in chat {title}({chat_id}): {message_text}")
@@ -298,7 +297,7 @@ async def handle_current_chart(update: Update, context: ContextTypes.DEFAULT_TYP
     chart = Chart(pair)
     chart.download_chart()
 
-    caption = get_image_caption(pair, posting_interval)
+    caption = get_image_caption(pair)
 
     output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
 
