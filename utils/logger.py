@@ -9,3 +9,6 @@ logger = logging.getLogger(__name__)
 
 # Suppress logs from the httpx package
 logging.getLogger('httpx').setLevel(logging.CRITICAL)
+
+# Suppress scheduler logs
+logging.getLogger('apscheduler.scheduler').setLevel(logging.WARNING)
