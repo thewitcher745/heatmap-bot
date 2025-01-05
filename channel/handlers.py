@@ -309,7 +309,6 @@ async def handle_current_chart(update: Update, context: ContextTypes.DEFAULT_TYP
     chart = Chart(pair)
     chart.download_chart()
 
-    caption = get_image_caption(pair)
     config = load_config()
     caption = get_image_caption(pair, channel_link=config[chat_id]['channel_link'])
 
