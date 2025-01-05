@@ -1,14 +1,13 @@
 import os.path
-from datetime import datetime, timedelta
 
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from utils.config_manager import save_config, load_config
+from utils.config_manager import save_config, load_config, initiate_channel_config
 from utils.logger import logger
 from data.chart import Chart
 from data.utils import send_image_with_caption
-from channel.channel_utils import get_image_caption, initiate_channel_config
+from channel.channel_utils import get_image_caption
 from channel.scheduler_utils import SimultaneousScheduler, SequentialScheduler
 
 
@@ -62,6 +61,29 @@ def initiate_periodic_charting(application):
                                                           "starting_time": starting_time})
 
             logger.info(scheduler.compose_starting_schedule())
+
+
+async def handle_init(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Initiates the channel's initial configuration with the /init command
+    Returns:
+
+    """
+    chat_id = str(update.channel_post.chat.id)
+    title = update.channel_post.chat.title
+    message_text = update.channel_post.text
+
+    # Log the message
+    logger.info(f"Config init message in chat {title}({chat_id}): {message_text}")
+
+    # Load the current configuration
+    config = initiate_channel_config(chat_id)
+
+    # Save the updated configuration
+    save_config(config)
+
+    await context.bot.send_message(chat_id=chat_id,
+                                   text=f"✅ Channel config initiated to defaults. The bot needs to be restarted for the changes to take effect.")
 
 
 async def handle_set_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
