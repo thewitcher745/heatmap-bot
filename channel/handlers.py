@@ -260,7 +260,7 @@ async def send_periodic_chart(context: ContextTypes.DEFAULT_TYPE) -> None:
         chart.download_chart()
 
         for pair in pair_list:
-            caption = get_image_caption(pair, posting_interval)
+            caption = get_image_caption(pair, channel_link=config[chat_id]['channel_link'], posting_interval=posting_interval)
 
             output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
 
@@ -274,7 +274,7 @@ async def send_periodic_chart(context: ContextTypes.DEFAULT_TYPE) -> None:
         chart = Chart(pair)
         chart.download_chart()
 
-        caption = get_image_caption(pair, posting_interval)
+        caption = get_image_caption(pair, channel_link=config[chat_id]['channel_link'], posting_interval=posting_interval)
 
         output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
 
@@ -310,6 +310,8 @@ async def handle_current_chart(update: Update, context: ContextTypes.DEFAULT_TYP
     chart.download_chart()
 
     caption = get_image_caption(pair)
+    config = load_config()
+    caption = get_image_caption(pair, channel_link=config[chat_id]['channel_link'])
 
     output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
 
