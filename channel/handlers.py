@@ -117,13 +117,19 @@ async def handle_add_pair(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     pair = parts[1]
 
     config = initiate_channel_config(chat_id)
-    config[chat_id]["pair_list"].append(pair)
 
-    # Save the updated configuration
-    save_config(config)
+    if pair not in config[chat_id]["pair_list"]:
+        config[chat_id]["pair_list"].append(pair.upper())
 
-    # Post the update of the timeframe to the channel that requested it
-    await context.bot.send_message(chat_id=chat_id, text=f"✅ Added pair {pair}")
+        # Save the updated configuration
+        save_config(config)
+
+        # Post the update of the timeframe to the channel that requested it
+        await context.bot.send_message(chat_id=chat_id, text=f"✅ Added pair {pair.upper()}")
+
+    # If pair is already on the list, nothing should change
+    else:
+        await context.bot.send_message(chat_id=chat_id, text=f"❌ {pair.upper()} already exists on the list.")
 
 
 async def handle_remove_pair(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -148,13 +154,18 @@ async def handle_remove_pair(update: Update, context: ContextTypes.DEFAULT_TYPE)
     pair = parts[1]
 
     config = initiate_channel_config(chat_id)
-    config[chat_id]["pair_list"].remove(pair)
+    if pair in config[chat_id]["pair_list"]:
+        config[chat_id]["pair_list"].remove(pair.upper())
 
-    # Save the updated configuration
-    save_config(config)
+        # Save the updated configuration
+        save_config(config)
 
-    # Post the update of the timeframe to the channel that requested it
-    await context.bot.send_message(chat_id=chat_id, text=f"✅ Removed pair {pair}")
+        # Post the update of the pair removal to the channel that requested it
+        await context.bot.send_message(chat_id=chat_id, text=f"✅ Removed pair {pair.upper()}")
+
+    # If the pair doesn't exist in the list, nothing would change.
+    else:
+        await context.bot.send_message(chat_id=chat_id, text=f"✅ {pair.upper()} doesn't exist in the channel pair list. Nothing changed.")
 
 
 async def handle_show_pairs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
