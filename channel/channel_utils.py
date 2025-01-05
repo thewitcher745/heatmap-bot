@@ -11,10 +11,10 @@ async def error_handler(update, context):
 
 
 def get_image_caption(pair, posting_interval: int = None):
-    # Convert the seconds of posting_interval to hours
-    interval_in_hours = int(posting_interval / 3600)
-
     if posting_interval:
+        # Convert the seconds of posting_interval to hours
+        interval_in_hours = int(posting_interval / 3600)
+
         caption = f"""
 ⚡️ #{pair} Liquidation Heatmap ⚡️
 
