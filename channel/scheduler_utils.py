@@ -2,38 +2,37 @@
 from datetime import timezone, datetime, timedelta
 
 import constants
-from utils.logger import logger
-
-
-def get_ms_until_next_interval(interval):
-    """
-    Calculate the number of seconds until the next interval.
-
-    Args:
-        interval (int): The interval in seconds.
-
-    Returns:
-        float: The number of seconds until the next interval.
-    """
-
-    now = datetime.now(timezone.utc)
-    ms_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds() * 1000
-    ms_until_next_interval = interval * 1000 - (ms_since_midnight % (interval * 1000))
-
-    # +delay to make sure the candles are formed
-    return ms_until_next_interval + constants.CHART_DELAY_SECONDS * 1000
 
 
 class SimultaneousScheduler:
-    def __init__(self, posting_interval: int):
+    def __init__(self, posting_interval: int, custom_current_time=None):
         self.posting_interval = posting_interval
 
         self.starting_time = None
 
-        self.get_starting_time()
+        self.__get_starting_time()
 
-    def get_starting_time(self):
-        time_until_start = get_ms_until_next_interval(self.posting_interval)
+    def __get_ms_until_next_interval(self):
+        """
+        Calculate the number of seconds until the next interval.
+
+        Args:
+            interval (int): The interval in seconds.
+
+        Returns:
+            float: The number of seconds until the next interval.
+        """
+
+        now = datetime.now(timezone.utc)
+
+        ms_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds() * 1000
+        ms_until_next_interval = self.posting_interval * 1000 - (ms_since_midnight % (self.posting_interval * 1000))
+
+        # +delay to make sure the candles are formed
+        return ms_until_next_interval + constants.CHART_DELAY_SECONDS * 1000
+
+    def __get_starting_time(self):
+        time_until_start = self.__get_ms_until_next_interval()
         starting_time = datetime.now() + timedelta(milliseconds=time_until_start)
 
         self.starting_time = starting_time
@@ -49,12 +48,13 @@ class SequentialScheduler:
 
         self.starting_schedule = dict()
 
-        self.get_starting_schedule()
+        self.__get_starting_schedule()
 
     def __get_ms_since_last_posting(self):
         # Get number of milliseconds since last posting time
 
         now = datetime.now(timezone.utc)
+
         ms_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds() * 1000
 
         ms_since_last_posting_time = ms_since_midnight % (self.posting_interval * 1000)
@@ -66,6 +66,7 @@ class SequentialScheduler:
 
         ms_since_last_posting_time = timedelta(milliseconds=self.__get_ms_since_last_posting())
         now = datetime.now(timezone.utc)
+
         return now - ms_since_last_posting_time
 
     def __get_next_scheduled_pair_index(self):
@@ -80,12 +81,12 @@ class SequentialScheduler:
         else:
             return next_scheduled_pair_idx
 
-    def get_starting_schedule(self):
+    def __get_starting_schedule(self):
         def calculate_left_rolled_posting_times(lst, shift):
             """
                 This function rolls the list, and adds posting_interval to whichever pairs have been shifted to the end of the list. The pairs at the
-                start are not affected. For example, a minus-1-rolled [0 3600 7200] (With pair interval 3600) would become [3600 7200 46800] if the posting
-                interval is 43200.
+                start are not affected. For example, a minus-1-rolled [0 3600 7200] (With pair interval 3600) would become [3600 7200 46800] if the
+                posting interval is 43200.
                 Rolls the list to the left by the specified number of positions.
 
                 Args:
@@ -130,8 +131,7 @@ class SequentialScheduler:
 
         # The final schedule of the pair posting data.
         starting_schedule = []
-        print(first_pair_to_post_idx)
-        print(self.__get_last_posting_time())
+
         for pair_order_tuple in rolled_posting_times:
             starting_time = self.__get_last_posting_time() + timedelta(seconds=pair_order_tuple[1] + constants.CHART_DELAY_SECONDS)
 
