@@ -8,12 +8,14 @@ from selenium.webdriver.remote.webelement import WebElement
 from PIL import Image
 
 import constants
-
+from utils.logger import logger
 
 class Chart:
-    def __init__(self, pair_list: list | str):
+    def __init__(self, pair_list: list | str, headless_mode: bool = True):
         options = webdriver.ChromeOptions()
-        options.add_argument('--headless')  # Run in headless mode
+
+        if headless_mode:
+            options.add_argument('--headless')  # Run in headless mode
 
         # Set the download directory.
         download_dir = os.path.join(os.path.abspath(os.getcwd()), 'output_images')
@@ -57,21 +59,45 @@ class Chart:
         except:
             pass
 
+    def click_symbol_button(self):
+        # This method clicks on the Symbol button
+
+        # Wait until the buttons are present
+        buttons = WebDriverWait(self.driver, 10).until(
+            EC.presence_of_all_elements_located((By.TAG_NAME, 'button'))
+        )
+
+        # Iterate through the buttons and find the one with innerHTML "Symbol"
+        for button in buttons:
+            if button.get_attribute('innerHTML') == 'Symbol':
+                # Click the button or perform any other action
+                button.click()
+                break
+
     def select_pair_from_list(self, pair_name):
         # Fetches the list of pairs from the GUI, then clicks on the one which has its innerHTML matched with the pair name.
 
         # Get the list of available pairs
         dropdown_list: WebElement = WebDriverWait(self.driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, constants.DROPDOW_LIST_ELEMENT_SELECTOR))
+            EC.presence_of_element_located((By.CSS_SELECTOR, constants.DROPDOWN_LIST_ELEMENT_SELECTOR))
         )
 
         menu_items = dropdown_list.find_elements(By.CSS_SELECTOR, 'li')
+
+        # If the list of symbols hasn't loaded in, return "LIST_INCOMPLETE"
+        if len(menu_items) < 5:
+            return "LIST_INCOMPLETE"
 
         # Iterate through the menu items and click the one that matches the pair_name
         for item in menu_items:
             if item.get_attribute("innerHTML") == pair_name:
                 item.click()
-                break
+
+                return "DONE"
+
+        # If the pair's name, for whatever reason, isn't found, return "PAIR_NOT_FOUND"
+        return "PAIR_NOT_FOUND"
+
 
     def get_chart_into_view(self, element) -> tuple[dict, dict]:
         # This function scrolls the chart into view if for whatever reason it isn't in the view already. This function should never really execute.
@@ -113,30 +139,42 @@ class Chart:
 
     def download_chart(self):
         try:
-            self.driver.get(constants.CHART_URL)
+            while True:
+                self.driver.get(constants.CHART_URL)
 
-            self.remove_cookie_consent_window()
+                self.remove_cookie_consent_window()
 
-            self.click_element(constants.SYMBOL_TOGGLE_BUTTON_SELECTOR)
-            time.sleep(1)  # Just to be safe
+                self.click_symbol_button()
+                time.sleep(1)  # Just to be safe
 
-            # Find each pair in the pair_list property in the list and save its chart
-            for pair in self.pair_list:
-                self.click_element(constants.SYMBOL_DROPDOWN_BUTTON_SELECTOR)
+                # Find each pair in the pair_list property in the list and save its chart
+                for pair in self.pair_list:
+                    self.click_element(constants.SYMBOL_DROPDOWN_BUTTON_SELECTOR)
 
-                self.select_pair_from_list(pair)
+                    pair_selection = self.select_pair_from_list(pair)
 
-                # Wait until the chart element appears.
-                element = WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, constants.CHART_ELEMENT_SELECTOR))
-                )
+                    # If anything goes wrong with selecting the pair from the list, handle the error by either skipping the pair or refreshing.
+                    if pair_selection == "PAIR_NOT_FOUND":
+                        logger.error(f'Chart for pair {pair} not found. Consider removing.')
+                        continue
 
-                # Wait for element to load
-                time.sleep(5)
+                    elif pair_selection == "LIST_INCOMPLETE":
+                        break
 
-                location, size = self.get_chart_into_view(element)
+                    # Wait until the chart element appears.
+                    element = WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, constants.CHART_ELEMENT_SELECTOR))
+                    )
 
-                self.crop_and_save_charts(pair, location, size)
+                    # Wait for element to load
+                    time.sleep(5)
+
+                    location, size = self.get_chart_into_view(element)
+
+                    self.crop_and_save_charts(pair, location, size)
+
+                else:
+                    break
 
         finally:
             self.driver.quit()
