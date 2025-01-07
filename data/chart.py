@@ -10,6 +10,7 @@ from PIL import Image
 import constants
 from utils.logger import logger
 
+
 class Chart:
     def __init__(self, pair_list: list | str, headless_mode: bool = True):
         options = webdriver.ChromeOptions()
@@ -93,11 +94,13 @@ class Chart:
             if item.get_attribute("innerHTML") == pair_name:
                 item.click()
 
+                # Remove focus from the dropdown menu
+                self.driver.execute_script("document.activeElement.blur();")
+
                 return "DONE"
 
         # If the pair's name, for whatever reason, isn't found, return "PAIR_NOT_FOUND"
         return "PAIR_NOT_FOUND"
-
 
     def get_chart_into_view(self, element) -> tuple[dict, dict]:
         # This function scrolls the chart into view if for whatever reason it isn't in the view already. This function should never really execute.
