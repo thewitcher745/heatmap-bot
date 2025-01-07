@@ -22,6 +22,8 @@ class Chart:
         download_dir = os.path.join(os.path.abspath(os.getcwd()), 'output_images')
         prefs = {'download.default_directory': download_dir}
         options.add_experimental_option('prefs', prefs)
+        options.page_load_strategy = 'eager'
+        options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
         # Initiate the driver.
         driver = webdriver.Chrome(options=options)
@@ -59,6 +61,54 @@ class Chart:
             self.driver.execute_script(f"document.querySelector('{constants.CONSENT_ROOT_ELEMENT_SELECTOR}').remove();")
         except:
             pass
+
+    def prevent_cookie_window(self):
+        # Inject JavaScript to remove the element with the given CSS selector
+        script = f'''
+        var style = document.createElement('style');
+        style.innerHTML = '{constants.CONSENT_ROOT_ELEMENT_SELECTOR}{{ display: none !important }}';
+        document.head.appendChild(style);
+        '''
+
+        self.driver.execute_script(script)
+
+    def hide_loading_elements(self):
+        # Inject JavaScript to hide the loading elements, aka the blur and the spinner.
+        script1 = f'''
+                var style1 = document.createElement('style');
+                style1.innerHTML = '{constants.BLUR_ELEMENT_SELECTOR}{{ visibility: hidden !important }}';
+                document.head.appendChild(style1);
+                '''
+
+        script2 = f'''
+                var style2 = document.createElement('style');
+                style2.innerHTML = '{constants.LOADER_SPINNER_SELECTOR}{{ visibility: hidden !important }}';
+                document.head.appendChild(style2);
+                '''
+
+        self.driver.execute_script(script1)
+        self.driver.execute_script(script2)
+
+    def chart_has_finished_loading(self):
+        # Finds the elements with z-index -1 and opacity 0, which would be the loading blur and the spinner if the chart has finished loading.
+        # Also checks if the canvas element exists.
+        try:
+            # JavaScript function to check if the chart has loaded
+            js_script = '''
+                    var chartCanvases = document.querySelectorAll("canvas");
+                    var isLoadingComplete = Array.from(document.querySelectorAll('*')).filter(el => {
+                        const style = window.getComputedStyle(el);
+                        return style.zIndex === '-1' && style.opacity !== '0';
+                    });
+                    return (chartCanvases.length > 0) && (isLoadingComplete.length >= 1);
+                    '''
+
+            # Execute the JavaScript and return the result
+            is_loaded = self.driver.execute_script(js_script)
+            return is_loaded
+
+        except:
+            return False
 
     def click_symbol_button(self):
         # This method clicks on the Symbol button
@@ -144,9 +194,10 @@ class Chart:
         try:
             while True:
                 self.driver.get(constants.CHART_URL)
+                self.prevent_cookie_window()
+                self.hide_loading_elements()
 
-                self.remove_cookie_consent_window()
-
+                WebDriverWait(self.driver, 30).until(lambda driver: self.chart_has_finished_loading())
                 self.click_symbol_button()
                 time.sleep(1)  # Just to be safe
 
@@ -164,15 +215,15 @@ class Chart:
                     elif pair_selection == "LIST_INCOMPLETE":
                         break
 
+                    WebDriverWait(self.driver, 30, poll_frequency=1).until(lambda driver: self.chart_has_finished_loading())
+                    time.sleep(2)
+
                     # Wait until the chart element appears.
-                    element = WebDriverWait(self.driver, 10).until(
+                    chart_screenshot_element = WebDriverWait(self.driver, 10).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, constants.CHART_ELEMENT_SELECTOR))
                     )
 
-                    # Wait for element to load
-                    time.sleep(5)
-
-                    location, size = self.get_chart_into_view(element)
+                    location, size = self.get_chart_into_view(chart_screenshot_element)
 
                     self.crop_and_save_charts(pair, location, size)
 
