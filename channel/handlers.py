@@ -317,23 +317,21 @@ async def handle_current_chart(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # Separate the setup command and process the inputs
     parts = message_text.split(" ")
-    if len(parts) < 2:
-        await context.bot.send_message(chat_id=chat_id, text="❌ Invalid command format. Use /currentchart <symbol>, where interval is in seconds.")
-        return
 
-    pair = parts[1]
+    pairs = parts[1:]
 
     # Initialize the Chart class and download the chart
-    pair = pair.replace("USDT", "").replace("USD", "")
+    pairs = [pair.replace("USDT", "").replace("USD", "") for pair in pairs]
 
-    await context.bot.send_message(chat_id=chat_id, text=f"⏳ Generating {pair} chart, please wait...")
+    await context.bot.send_message(chat_id=chat_id, text=f"⏳ Generating {pairs} chart, please wait...")
 
-    chart = Chart(pair)
+    chart = Chart(pairs)
     chart.download_chart()
 
     config = load_config()
-    caption = get_image_caption(pair, channel_link=config[chat_id]['channel_link'])
+    for pair in pairs:
+        caption = get_image_caption(pair, channel_link=config[chat_id]['channel_link'])
 
-    output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
+        output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
 
-    await send_image_with_caption(output_path, context, chat_id, caption)
+        await send_image_with_caption(output_path, context, chat_id, caption)
