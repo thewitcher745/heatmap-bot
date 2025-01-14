@@ -275,13 +275,17 @@ async def send_periodic_chart(context: ContextTypes.DEFAULT_TYPE) -> None:
     config = load_config()
 
     if config[chat_id]["mode"] == "simultaneous":
-        pair_list = [pair.replace("USDT", "").replace("USD", "") for pair in config[chat_id]["pair_list"]]
+        pair_list = [pair.replace("USDT", "").replace("USD", "").replace(' ', '') for pair in config[chat_id]["pair_list"]]
 
         # Initialize the Chart class and download the chart
         chart = Chart(pair_list)
         chart.download_chart()
 
         for pair in pair_list:
+            # Skip placeholder pairs
+            if len(pair) == 0 or pair == '':
+                return
+
             caption = get_image_caption(pair, channel_link=config[chat_id]['channel_link'], posting_interval=posting_interval)
 
             output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
@@ -290,7 +294,11 @@ async def send_periodic_chart(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     elif config[chat_id]["mode"] == "sequential":
         # The pair is passed from the job queue through the context.job.data property as a dict.
-        pair = context.job.data["pair"].replace("USDT", "").replace("USD", "")
+        pair = context.job.data["pair"].replace("USDT", "").replace("USD", "").replace(' ', '')
+
+        # Skip placeholder pairs
+        if len(pair) == 0 or pair == '':
+            return
 
         # Initialize the Chart class and download the chart
         chart = Chart(pair)
@@ -321,7 +329,7 @@ async def handle_current_chart(update: Update, context: ContextTypes.DEFAULT_TYP
     pairs = parts[1:]
 
     # Initialize the Chart class and download the chart
-    pairs = [pair.replace("USDT", "").replace("USD", "") for pair in pairs]
+    pairs = [pair.replace("USDT", "").replace("USD", "").replace(' ', '') for pair in pairs]
 
     await context.bot.send_message(chat_id=chat_id, text=f"⏳ Generating {pairs} chart, please wait...")
 
