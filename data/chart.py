@@ -53,7 +53,7 @@ class Chart:
         # This method simply clicks on an element, given its CSS selector.
         self.driver.execute_script(f"arguments[0].click();", element)
 
-    def remove_cookie_consent_window(self) -> None:
+    def hide_cookie_consent_window(self) -> None:
         # This method removes the ask-for-consent window from the DOM, allowing for a clear vision of the chart.
 
         # The cookie consent window may or may not show. So a try-except block is required.
@@ -100,7 +100,7 @@ class Chart:
                         const style = window.getComputedStyle(el);
                         return style.zIndex === '-1' && style.opacity !== '0';
                     });
-                    return (chartCanvases.length > 0) && (isLoadingComplete.length >= 1);
+                    return (chartCanvases.length > 0) && (isLoadingComplete.length >= 2);
                     '''
 
             # Execute the JavaScript and return the result
