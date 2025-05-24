@@ -1,0 +1,56 @@
+{
+    "-1002418261544": {
+        "posting_interval": 14400,
+        "mode": "simultaneous",
+        "channel_link": "https://t.me/CryptoLiquidationHeatmap",
+        "pair_list": [
+            "BTCUSDT",
+            "SOLUSDT",
+            "ETHUSDT"
+        ]
+    },
+    "-1002345884402": {
+        "posting_interval": 14400,
+        "mode": "simultaneous",
+        "pair_list": [],
+        "channel_link": null
+    },
+    "-1001615441615": {
+        "posting_interval": 43200,
+        "mode": "sequential",
+        "pair_list": [
+            "BTCUSDT",
+            "",
+            "ETHUSDT",
+            "",
+            "XRPUSDT",
+            "",
+            "SOLUSDT",
+            "",
+            "BNBUSDT",
+            "",
+            "DOGEUSDT",
+            "",
+            "ADAUSDT",
+            "",
+            "TRXUSDT",
+            "",
+            "AVAXUSDT",
+            "",
+            "SUIUSDT",
+            "",
+            "LINKUSDT",
+            "",
+            "TONUSDT",
+            ""
+        ],
+        "channel_link": "https://t.me/CryptoLiquidationHeatmap",
+        "pair_interval": 1800
+    },
+    "-1002195495401": {
+        "posting_interval": 14400,
+        "mode": "simultaneous",
+        "pair_list": [],
+        "channel_link": null
+    }
+}
