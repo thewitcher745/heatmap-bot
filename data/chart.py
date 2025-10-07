@@ -12,7 +12,7 @@ from utils.logger import logger
 
 
 class Chart:
-    def __init__(self, pair_list: list | str, headless_mode: bool = True):
+    def __init__(self, pair_list: list | str, headless_mode: bool = False):
         options = webdriver.ChromeOptions()
 
         if headless_mode:
