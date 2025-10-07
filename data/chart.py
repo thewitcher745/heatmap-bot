@@ -5,7 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import constants
 from utils.logger import logger
@@ -51,7 +51,7 @@ class Chart:
         )
 
         # This method simply clicks on an element, given its CSS selector.
-        self.driver.execute_script(f"arguments[0].click();", element)
+        self.driver.execute_script("arguments[0].click();", element)
 
     def hide_cookie_consent_window(self) -> None:
         # This method removes the ask-for-consent window from the DOM, allowing for a clear vision of the chart.
@@ -96,13 +96,17 @@ class Chart:
         # Also checks if the canvas element exists.
         try:
             # JavaScript function to check if the chart has loaded
+            # js_script = """
+            #         var chartCanvases = document.querySelectorAll("canvas");
+            #         var isLoadingComplete = Array.from(document.querySelectorAll('*')).filter(el => {
+            #             const style = window.getComputedStyle(el);
+            #             return style.zIndex === 'auto' && style.opacity !== '0';
+            #         });
+            #         return (chartCanvases.length > 0) && (isLoadingComplete.length >= 2);
+            #         """
             js_script = """
                     var chartCanvases = document.querySelectorAll("canvas");
-                    var isLoadingComplete = Array.from(document.querySelectorAll('*')).filter(el => {
-                        const style = window.getComputedStyle(el);
-                        return style.zIndex === 'auto' && style.opacity !== '0';
-                    });
-                    return (chartCanvases.length > 0) && (isLoadingComplete.length >= 2);
+                    return (chartCanvases.length > 0);
                     """
 
             # Execute the JavaScript and return the result
@@ -129,6 +133,15 @@ class Chart:
 
     def select_pair_from_list(self, pair_name):
         # Fetches the list of pairs from the GUI, then clicks on the one which has its innerHTML matched with the pair name.
+
+        # Click the button to open the list of symbols
+        dropdown_button: WebElement = WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, constants.SYMBOL_DROPDOWN_BUTTON_SELECTOR)
+            )
+        )
+
+        dropdown_button.click()
 
         # Get the list of available pairs
         dropdown_list: WebElement = WebDriverWait(self.driver, 10).until(
@@ -160,21 +173,24 @@ class Chart:
         # This function scrolls the chart into view if for whatever reason it isn't in the view already. This function should never really execute.
         # It returns the location and size of the element on the webpage, which get used in screenshotting it.
         # Get the element's location and size
-        location = element.location
+
+        # distance_from_bottom = self.driver.execute_script(
+        #     "return window.innerHeight - arguments[0].getBoundingClientRect().bottom",
+        #     element,
+        # )
+        # self.driver.execute_script(
+        #     "arguments[0].scrollIntoView({block: 'center'})", element
+        # )
+
+        # Update the element's location and size after scrolling
+        # element = WebDriverWait(self.driver, 10).until(
+        #     EC.presence_of_element_located(
+        #         (By.CSS_SELECTOR, constants.CHART_ELEMENT_SELECTOR)
+        #     )
+        # )
+
+        location = element.location_once_scrolled_into_view
         size = element.size
-
-        distance_from_bottom = self.driver.execute_script(
-            "return window.innerHeight - arguments[0].getBoundingClientRect().bottom",
-            element,
-        )
-        if distance_from_bottom < 0:
-            self.driver.execute_script(
-                "arguments[0].scrollIntoView({block: 'center'})", element
-            )
-
-            # Update the element's location and size after scrolling
-            location = element.location
-            size = element.size
 
         return location, size
 
@@ -194,7 +210,7 @@ class Chart:
         bottom = location["y"] + size["height"] + constants.CHART_Y_OFFSET
         cropped_image = image.crop((left, top, right, bottom))
 
-        # Save the cropped image
+        # # Save the cropped image
         output_path = os.path.join(self.download_dir, f"heatmap_{pair}.png")
 
         cropped_image.save(output_path)
@@ -203,28 +219,18 @@ class Chart:
         try:
             # Loop indefinitely
             while True:
-                print("Navigating to chart URL")
-                self.driver.get(constants.CHART_URL)
-                print("Preventing cookie window from appearing")
+                request_url = f"{constants.CHART_URL}?coin=BTC&type=symbol"
+                self.driver.get(request_url)
                 self.prevent_cookie_window()
-                print("Hiding loading elements")
                 self.hide_loading_elements()
 
                 # Wait for the chart to finish loading
-                print("Waiting for chart to finish loading")
                 WebDriverWait(self.driver, 30).until(
                     lambda driver: self.chart_has_finished_loading()
                 )
-                print("Clicking symbol button")
-                self.click_symbol_button()
-                time.sleep(1)  # Just to be safe
 
                 # Find each pair in the pair_list property in the list and save its chart
                 for pair in self.pair_list:
-                    print(f"Downloading chart for pair {pair}")
-                    # Click the symbol dropdown button
-                    self.click_element(constants.SYMBOL_DROPDOWN_BUTTON_SELECTOR)
-
                     # Select the pair from the list
                     pair_selection = self.select_pair_from_list(pair)
 
@@ -234,14 +240,13 @@ class Chart:
                         continue
 
                     elif pair_selection == "LIST_INCOMPLETE":
-                        print("List of pairs not fully loaded. Refreshing.")
                         break
 
                     # Wait for the chart to finish loading again
-                    print("Waiting for chart to finish loading again")
                     WebDriverWait(self.driver, 30, poll_frequency=1).until(
                         lambda driver: self.chart_has_finished_loading()
                     )
+
                     time.sleep(2)
 
                     # Find the chart element
@@ -252,14 +257,12 @@ class Chart:
                     )
 
                     # Get the location and size of the element
-                    print("Getting element location and size")
                     location, size = self.get_chart_into_view(chart_screenshot_element)
 
                     # Crop and save the chart
                     self.crop_and_save_charts(pair, location, size)
 
                 else:
-                    print("All pairs have been downloaded.")
                     break
 
         except Exception as e:
