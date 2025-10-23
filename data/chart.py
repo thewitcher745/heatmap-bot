@@ -5,20 +5,26 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import constants
 from utils.logger import logger
 
 
 class Chart:
-    def __init__(self, pair_list: list | str, headless_mode: bool = True):
+    def __init__(self, pair_list: list | str, headless_mode: bool = False):
         options = webdriver.ChromeOptions()
 
         if headless_mode:
             options.add_argument("--headless")  # Run in headless mode
+            options.add_argument("--headless")  # Run in headless mode
 
         # Set the download directory.
+        download_dir = os.path.join(os.path.abspath(os.getcwd()), "output_images")
+        prefs = {"download.default_directory": download_dir}
+        options.add_experimental_option("prefs", prefs)
+        options.page_load_strategy = "eager"
+        options.add_experimental_option("excludeSwitches", ["enable-logging"])
         download_dir = os.path.join(os.path.abspath(os.getcwd()), "output_images")
         prefs = {"download.default_directory": download_dir}
         options.add_experimental_option("prefs", prefs)
@@ -51,7 +57,7 @@ class Chart:
         )
 
         # This method simply clicks on an element, given its CSS selector.
-        self.driver.execute_script(f"arguments[0].click();", element)
+        self.driver.execute_script("arguments[0].click();", element)
 
     def hide_cookie_consent_window(self) -> None:
         # This method removes the ask-for-consent window from the DOM, allowing for a clear vision of the chart.
@@ -61,15 +67,20 @@ class Chart:
             self.driver.execute_script(
                 f"document.querySelector('{constants.CONSENT_ROOT_ELEMENT_SELECTOR}').remove();"
             )
+            self.driver.execute_script(
+                f"document.querySelector('{constants.CONSENT_ROOT_ELEMENT_SELECTOR}').remove();"
+            )
         except:
             pass
 
     def prevent_cookie_window(self):
         # Inject JavaScript to remove the element with the given CSS selector
         script = f"""
+        script = f"""
         var style = document.createElement('style');
         style.innerHTML = '{constants.CONSENT_ROOT_ELEMENT_SELECTOR}{{ display: none !important }}';
         document.head.appendChild(style);
+        """
         """
 
         self.driver.execute_script(script)
@@ -77,15 +88,19 @@ class Chart:
     def hide_loading_elements(self):
         # Inject JavaScript to hide the loading elements, aka the blur and the spinner.
         script1 = f"""
+        script1 = f"""
                 var style1 = document.createElement('style');
                 style1.innerHTML = '{constants.BLUR_ELEMENT_SELECTOR}{{ visibility: hidden !important }}';
                 document.head.appendChild(style1);
                 """
+                """
 
+        script2 = f"""
         script2 = f"""
                 var style2 = document.createElement('style');
                 style2.innerHTML = '{constants.LOADER_SPINNER_SELECTOR}{{ visibility: hidden !important }}';
                 document.head.appendChild(style2);
+                """
                 """
 
         self.driver.execute_script(script1)
@@ -118,10 +133,12 @@ class Chart:
         # Wait until the buttons are present
         buttons = WebDriverWait(self.driver, 10).until(
             EC.presence_of_all_elements_located((By.TAG_NAME, "button"))
+            EC.presence_of_all_elements_located((By.TAG_NAME, "button"))
         )
 
         # Iterate through the buttons and find the one with innerHTML "Symbol"
         for button in buttons:
+            if button.get_attribute("innerHTML") == "Symbol":
             if button.get_attribute("innerHTML") == "Symbol":
                 # Click the button or perform any other action
                 button.click()
@@ -130,13 +147,26 @@ class Chart:
     def select_pair_from_list(self, pair_name):
         # Fetches the list of pairs from the GUI, then clicks on the one which has its innerHTML matched with the pair name.
 
+        # Click the button to open the list of symbols
+        dropdown_button: WebElement = WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, constants.SYMBOL_DROPDOWN_BUTTON_SELECTOR)
+            )
+        )
+
+        dropdown_button.click()
+
         # Get the list of available pairs
         dropdown_list: WebElement = WebDriverWait(self.driver, 10).until(
             EC.presence_of_element_located(
                 (By.CSS_SELECTOR, constants.DROPDOWN_LIST_ELEMENT_SELECTOR)
             )
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, constants.DROPDOWN_LIST_ELEMENT_SELECTOR)
+            )
         )
 
+        menu_items = dropdown_list.find_elements(By.CSS_SELECTOR, "li")
         menu_items = dropdown_list.find_elements(By.CSS_SELECTOR, "li")
 
         # If the list of symbols hasn't loaded in, return "LIST_INCOMPLETE"
@@ -184,10 +214,15 @@ class Chart:
 
         # Take a full-page screenshot
         screenshot_path = os.path.join(self.download_dir, "full_screenshot.png")
+        screenshot_path = os.path.join(self.download_dir, "full_screenshot.png")
         self.driver.save_screenshot(screenshot_path)
 
         # Open the screenshot and crop the desired area
         image = Image.open(screenshot_path)
+        left = location["x"] - constants.CHART_X_OFFSET
+        top = location["y"] - constants.CHART_Y_OFFSET
+        right = location["x"] + size["width"] + constants.CHART_X_OFFSET
+        bottom = location["y"] + size["height"] + constants.CHART_Y_OFFSET
         left = location["x"] - constants.CHART_X_OFFSET
         top = location["y"] - constants.CHART_Y_OFFSET
         right = location["x"] + size["width"] + constants.CHART_X_OFFSET
@@ -201,8 +236,10 @@ class Chart:
 
     def download_chart(self):
         try:
+            # Loop indefinitely
             while True:
-                self.driver.get(constants.CHART_URL)
+                request_url = f"{constants.CHART_URL}?coin=BTC&type=symbol"
+                self.driver.get(request_url)
                 self.prevent_cookie_window()
                 self.hide_loading_elements()
 
@@ -214,8 +251,7 @@ class Chart:
 
                 # Find each pair in the pair_list property in the list and save its chart
                 for pair in self.pair_list:
-                    self.click_element(constants.SYMBOL_DROPDOWN_BUTTON_SELECTOR)
-
+                    # Select the pair from the list
                     pair_selection = self.select_pair_from_list(pair)
 
                     # If anything goes wrong with selecting the pair from the list, handle the error by either skipping the pair or refreshing.
@@ -233,15 +269,20 @@ class Chart:
                     )
                     time.sleep(2)
 
-                    # Wait until the chart element appears.
+                    # Find the chart element
                     chart_screenshot_element = WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located(
+                            (By.CSS_SELECTOR, constants.CHART_ELEMENT_SELECTOR)
+                        )
                         EC.presence_of_element_located(
                             (By.CSS_SELECTOR, constants.CHART_ELEMENT_SELECTOR)
                         )
                     )
 
+                    # Get the location and size of the element
                     location, size = self.get_chart_into_view(chart_screenshot_element)
 
+                    # Crop and save the chart
                     self.crop_and_save_charts(pair, location, size)
 
                 else:
@@ -251,4 +292,5 @@ class Chart:
             logger.error(f"Error downloading chart: {e}")
 
         finally:
+            # Close the driver
             self.driver.quit()

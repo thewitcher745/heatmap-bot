@@ -25,15 +25,20 @@ def initiate_periodic_charting(application):
                 f"Started periodic chart generation for {chat_id} "
                 f"mode = 'simultaneous', "
                 f"period = {posting_interval}, "
-                f"starting time {starting_time}")
+                f"starting time {starting_time}"
+            )
 
-            application.job_queue.run_repeating(send_periodic_chart,
-                                                interval=posting_interval,
-                                                first=starting_time,
-                                                chat_id=chat_id,
-                                                data={"pair_list": pair_list,
-                                                      "posting_interval": posting_interval,
-                                                      "starting_time": starting_time})
+            application.job_queue.run_repeating(
+                send_periodic_chart,
+                interval=posting_interval,
+                first=starting_time,
+                chat_id=chat_id,
+                data={
+                    "pair_list": pair_list,
+                    "posting_interval": posting_interval,
+                    "starting_time": starting_time,
+                },
+            )
 
         elif config[chat_id]["mode"] == "sequential":
             # If mode is sequential, each pair has its own queue, with the starting point being different but with the same posting_interval.
@@ -48,17 +53,21 @@ def initiate_periodic_charting(application):
             starting_schedule = scheduler.starting_schedule
 
             for starting_schedule_dict in starting_schedule:
-                pair = starting_schedule_dict['pair']
-                starting_time = starting_schedule_dict['starting_time']
+                pair = starting_schedule_dict["pair"]
+                starting_time = starting_schedule_dict["starting_time"]
 
-                application.job_queue.run_repeating(send_periodic_chart,
-                                                    interval=posting_interval,
-                                                    first=starting_time,
-                                                    chat_id=chat_id,
-                                                    data={"pair": pair,
-                                                          "posting_interval": posting_interval,
-                                                          "pair_interval": pair_interval,
-                                                          "starting_time": starting_time})
+                application.job_queue.run_repeating(
+                    send_periodic_chart,
+                    interval=posting_interval,
+                    first=starting_time,
+                    chat_id=chat_id,
+                    data={
+                        "pair": pair,
+                        "posting_interval": posting_interval,
+                        "pair_interval": pair_interval,
+                        "starting_time": starting_time,
+                    },
+                )
 
             logger.info(scheduler.compose_starting_schedule())
 
@@ -82,8 +91,10 @@ async def handle_init(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     # Save the updated configuration
     save_config(config)
 
-    await context.bot.send_message(chat_id=chat_id,
-                                   text=f"✅ Channel config initiated to defaults. The bot needs to be restarted for the changes to take effect.")
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"✅ Channel config initiated to defaults. The bot needs to be restarted for the changes to take effect.",
+    )
 
 
 async def handle_set_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -101,8 +112,10 @@ async def handle_set_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Separate the setup command and process the inputs
     parts = message_text.split(" ")
     if len(parts) < 2:
-        await context.bot.send_message(chat_id=chat_id,
-                                       text="❌ Invalid command format. Use /setmode <mode>, where mode is either 'simultaneous' or 'sequential'.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="❌ Invalid command format. Use /setmode <mode>, where mode is either 'simultaneous' or 'sequential'.",
+        )
         return
 
     mode = parts[1]
@@ -114,7 +127,10 @@ async def handle_set_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Save the updated configuration
     save_config(config)
 
-    await context.bot.send_message(chat_id=chat_id, text=f"✅ Set mode to {mode}. The bot needs to be restarted for the changes to take effect.")
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"✅ Set mode to {mode}. The bot needs to be restarted for the changes to take effect.",
+    )
 
 
 async def handle_add_pair(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -133,7 +149,9 @@ async def handle_add_pair(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     parts = message_text.split(" ")
 
     if len(parts) < 2:
-        await context.bot.send_message(chat_id=chat_id, text="❌ Invalid command format. Use /addpair <pair>")
+        await context.bot.send_message(
+            chat_id=chat_id, text="❌ Invalid command format. Use /addpair <pair>"
+        )
         return
 
     pair = parts[1]
@@ -147,14 +165,20 @@ async def handle_add_pair(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         save_config(config)
 
         # Post the update of the timeframe to the channel that requested it
-        await context.bot.send_message(chat_id=chat_id, text=f"✅ Added pair {pair.upper()}")
+        await context.bot.send_message(
+            chat_id=chat_id, text=f"✅ Added pair {pair.upper()}"
+        )
 
     # If pair is already on the list, nothing should change
     else:
-        await context.bot.send_message(chat_id=chat_id, text=f"❌ {pair.upper()} already exists on the list.")
+        await context.bot.send_message(
+            chat_id=chat_id, text=f"❌ {pair.upper()} already exists on the list."
+        )
 
 
-async def handle_remove_pair(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_remove_pair(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """
     Remove a pair from the channel. The pair name is set by the command. The format is /removepair <pair name>
     """
@@ -170,7 +194,9 @@ async def handle_remove_pair(update: Update, context: ContextTypes.DEFAULT_TYPE)
     parts = message_text.split(" ")
 
     if len(parts) < 2:
-        await context.bot.send_message(chat_id=chat_id, text="❌ Invalid command format. Use /removepair <pair>")
+        await context.bot.send_message(
+            chat_id=chat_id, text="❌ Invalid command format. Use /removepair <pair>"
+        )
         return
 
     pair = parts[1]
@@ -183,11 +209,16 @@ async def handle_remove_pair(update: Update, context: ContextTypes.DEFAULT_TYPE)
         save_config(config)
 
         # Post the update of the pair removal to the channel that requested it
-        await context.bot.send_message(chat_id=chat_id, text=f"✅ Removed pair {pair.upper()}")
+        await context.bot.send_message(
+            chat_id=chat_id, text=f"✅ Removed pair {pair.upper()}"
+        )
 
     # If the pair doesn't exist in the list, nothing would change.
     else:
-        await context.bot.send_message(chat_id=chat_id, text=f"✅ {pair.upper()} doesn't exist in the channel pair list. Nothing changed.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"✅ {pair.upper()} doesn't exist in the channel pair list. Nothing changed.",
+        )
 
 
 async def handle_show_pairs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -210,7 +241,9 @@ async def handle_show_pairs(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await context.bot.send_message(chat_id=chat_id, text=message)
 
 
-async def handle_set_posting_interval(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_set_posting_interval(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     # Set the posting interval of the channel
     chat_id = str(update.channel_post.chat.id)
     title = update.channel_post.chat.title
@@ -222,7 +255,10 @@ async def handle_set_posting_interval(update: Update, context: ContextTypes.DEFA
     # Separate the setup command and process the inputs
     parts = message_text.split(" ")
     if len(parts) < 2:
-        await context.bot.send_message(chat_id=chat_id, text="❌ Invalid command format. Use /setinterval <interval>, where interval is in seconds.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="❌ Invalid command format. Use /setinterval <interval>, where interval is in seconds.",
+        )
         return
 
     interval = parts[1]
@@ -234,12 +270,16 @@ async def handle_set_posting_interval(update: Update, context: ContextTypes.DEFA
     # Save the updated configuration
     save_config(config)
 
-    await context.bot.send_message(chat_id=chat_id,
-                                   text=f"✅ Set posting interval to {interval} seconds. "
-                                        f"The bot needs to be restarted for the changes to take effect.")
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"✅ Set posting interval to {interval} seconds. "
+        f"The bot needs to be restarted for the changes to take effect.",
+    )
 
 
-async def handle_set_pair_interval(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_set_pair_interval(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     # Set the pair interval of the channel, which is the time between the pairs being posted. This parameter is ignored if mode == 'simultaneous'
     chat_id = str(update.channel_post.chat.id)
     title = update.channel_post.chat.title
@@ -251,8 +291,10 @@ async def handle_set_pair_interval(update: Update, context: ContextTypes.DEFAULT
     # Separate the setup command and process the inputs
     parts = message_text.split(" ")
     if len(parts) < 2:
-        await context.bot.send_message(chat_id=chat_id,
-                                       text="❌ Invalid command format. Use /setpairinterval <interval>, where interval is in seconds.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="❌ Invalid command format. Use /setpairinterval <interval>, where interval is in seconds.",
+        )
         return
 
     interval = parts[1]
@@ -264,8 +306,10 @@ async def handle_set_pair_interval(update: Update, context: ContextTypes.DEFAULT
     # Save the updated configuration
     save_config(config)
 
-    await context.bot.send_message(chat_id=chat_id,
-                                   text=f"✅ Set pair interval to {interval} seconds. The bot needs to be restarted for the changes to take effect.")
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"✅ Set pair interval to {interval} seconds. The bot needs to be restarted for the changes to take effect.",
+    )
 
 
 async def send_periodic_chart(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -275,7 +319,10 @@ async def send_periodic_chart(context: ContextTypes.DEFAULT_TYPE) -> None:
     config = load_config()
 
     if config[chat_id]["mode"] == "simultaneous":
-        pair_list = [pair.replace("USDT", "").replace("USD", "").replace(' ', '') for pair in config[chat_id]["pair_list"]]
+        pair_list = [
+            pair.replace("USDT", "").replace("USD", "").replace(" ", "")
+            for pair in config[chat_id]["pair_list"]
+        ]
 
         # Initialize the Chart class and download the chart
         chart = Chart(pair_list)
@@ -283,35 +330,50 @@ async def send_periodic_chart(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         for pair in pair_list:
             # Skip placeholder pairs
-            if len(pair) == 0 or pair == '':
+            if len(pair) == 0 or pair == "":
                 return
 
-            caption = get_image_caption(pair, channel_link=config[chat_id]['channel_link'], posting_interval=posting_interval)
+            caption = get_image_caption(
+                pair,
+                channel_link=config[chat_id]["channel_link"],
+                posting_interval=posting_interval,
+            )
 
-            output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
+            output_path = os.path.join(chart.download_dir, f"heatmap_{pair}.png")
 
             await send_image_with_caption(output_path, context, chat_id, caption)
 
     elif config[chat_id]["mode"] == "sequential":
         # The pair is passed from the job queue through the context.job.data property as a dict.
-        pair = context.job.data["pair"].replace("USDT", "").replace("USD", "").replace(' ', '')
+        pair = (
+            context.job.data["pair"]
+            .replace("USDT", "")
+            .replace("USD", "")
+            .replace(" ", "")
+        )
 
         # Skip placeholder pairs
-        if len(pair) == 0 or pair == '':
+        if len(pair) == 0 or pair == "":
             return
 
         # Initialize the Chart class and download the chart
         chart = Chart(pair)
         chart.download_chart()
 
-        caption = get_image_caption(pair, channel_link=config[chat_id]['channel_link'], posting_interval=posting_interval)
+        caption = get_image_caption(
+            pair,
+            channel_link=config[chat_id]["channel_link"],
+            posting_interval=posting_interval,
+        )
 
-        output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
+        output_path = os.path.join(chart.download_dir, f"heatmap_{pair}.png")
 
         await send_image_with_caption(output_path, context, chat_id, caption)
 
 
-async def handle_current_chart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_current_chart(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """
     Generate and send the current chart to the channel.
     """
@@ -321,7 +383,9 @@ async def handle_current_chart(update: Update, context: ContextTypes.DEFAULT_TYP
     message_text = update.channel_post.text
 
     # Log the message
-    logger.info(f"Current chart request message in chat {title}({chat_id}): {message_text}")
+    logger.info(
+        f"Current chart request message in chat {title}({chat_id}): {message_text}"
+    )
 
     # Separate the setup command and process the inputs
     parts = message_text.split(" ")
@@ -329,17 +393,21 @@ async def handle_current_chart(update: Update, context: ContextTypes.DEFAULT_TYP
     pairs = parts[1:]
 
     # Initialize the Chart class and download the chart
-    pairs = [pair.replace("USDT", "").replace("USD", "").replace(' ', '') for pair in pairs]
+    pairs = [
+        pair.replace("USDT", "").replace("USD", "").replace(" ", "") for pair in pairs
+    ]
 
-    await context.bot.send_message(chat_id=chat_id, text=f"⏳ Generating {pairs} chart, please wait...")
+    await context.bot.send_message(
+        chat_id=chat_id, text=f"⏳ Generating {pairs} chart, please wait..."
+    )
 
     chart = Chart(pairs)
     chart.download_chart()
 
     config = load_config()
     for pair in pairs:
-        caption = get_image_caption(pair, channel_link=config[chat_id]['channel_link'])
+        caption = get_image_caption(pair, channel_link=config[chat_id]["channel_link"])
 
-        output_path = os.path.join(chart.download_dir, f'heatmap_{pair}.png')
+        output_path = os.path.join(chart.download_dir, f"heatmap_{pair}.png")
 
         await send_image_with_caption(output_path, context, chat_id, caption)
