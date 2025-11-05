@@ -1,3 +1,4 @@
+import shutil
 import time
 import os
 from selenium import webdriver
@@ -5,7 +6,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
-from PIL import Image, ImageDraw
 
 import constants
 from utils.logger import logger
@@ -17,16 +17,18 @@ class Chart:
 
         if headless_mode:
             options.add_argument("--headless")  # Run in headless mode
-            options.add_argument("--headless")  # Run in headless mode
 
         # Set the download directory.
-        download_dir = os.path.join(os.path.abspath(os.getcwd()), "output_images")
-        prefs = {"download.default_directory": download_dir}
-        options.add_experimental_option("prefs", prefs)
-        options.page_load_strategy = "eager"
-        options.add_experimental_option("excludeSwitches", ["enable-logging"])
-        download_dir = os.path.join(os.path.abspath(os.getcwd()), "output_images")
-        prefs = {"download.default_directory": download_dir}
+        download_dir = os.path.abspath("output_images")
+        if not os.path.exists(download_dir):
+            os.makedirs(download_dir)
+
+        prefs = {
+            "download.default_directory": download_dir,
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "safebrowsing.enabled": True,
+        }
         options.add_experimental_option("prefs", prefs)
         options.page_load_strategy = "eager"
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
@@ -76,11 +78,9 @@ class Chart:
     def prevent_cookie_window(self):
         # Inject JavaScript to remove the element with the given CSS selector
         script = f"""
-        script = f"""
         var style = document.createElement('style');
         style.innerHTML = '{constants.CONSENT_ROOT_ELEMENT_SELECTOR}{{ display: none !important }}';
         document.head.appendChild(style);
-        """
         """
 
         self.driver.execute_script(script)
@@ -88,19 +88,15 @@ class Chart:
     def hide_loading_elements(self):
         # Inject JavaScript to hide the loading elements, aka the blur and the spinner.
         script1 = f"""
-        script1 = f"""
                 var style1 = document.createElement('style');
                 style1.innerHTML = '{constants.BLUR_ELEMENT_SELECTOR}{{ visibility: hidden !important }}';
                 document.head.appendChild(style1);
                 """
-                """
 
-        script2 = f"""
         script2 = f"""
                 var style2 = document.createElement('style');
                 style2.innerHTML = '{constants.LOADER_SPINNER_SELECTOR}{{ visibility: hidden !important }}';
                 document.head.appendChild(style2);
-                """
                 """
 
         self.driver.execute_script(script1)
@@ -127,166 +123,56 @@ class Chart:
         except:
             return False
 
-    def click_symbol_button(self):
-        # This method clicks on the Symbol button
-
-        # Wait until the buttons are present
-        buttons = WebDriverWait(self.driver, 10).until(
-            EC.presence_of_all_elements_located((By.TAG_NAME, "button"))
-            EC.presence_of_all_elements_located((By.TAG_NAME, "button"))
-        )
-
-        # Iterate through the buttons and find the one with innerHTML "Symbol"
-        for button in buttons:
-            if button.get_attribute("innerHTML") == "Symbol":
-            if button.get_attribute("innerHTML") == "Symbol":
-                # Click the button or perform any other action
-                button.click()
-                break
-
-    def select_pair_from_list(self, pair_name):
-        # Fetches the list of pairs from the GUI, then clicks on the one which has its innerHTML matched with the pair name.
-
-        # Click the button to open the list of symbols
-        dropdown_button: WebElement = WebDriverWait(self.driver, 10).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, constants.SYMBOL_DROPDOWN_BUTTON_SELECTOR)
-            )
-        )
-
-        dropdown_button.click()
-
-        # Get the list of available pairs
-        dropdown_list: WebElement = WebDriverWait(self.driver, 10).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, constants.DROPDOWN_LIST_ELEMENT_SELECTOR)
-            )
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, constants.DROPDOWN_LIST_ELEMENT_SELECTOR)
-            )
-        )
-
-        menu_items = dropdown_list.find_elements(By.CSS_SELECTOR, "li")
-        menu_items = dropdown_list.find_elements(By.CSS_SELECTOR, "li")
-
-        # If the list of symbols hasn't loaded in, return "LIST_INCOMPLETE"
-        if len(menu_items) < 5:
-            return "LIST_INCOMPLETE"
-
-        # Iterate through the menu items and click the one that matches the pair_name
-        for item in menu_items:
-            if item.get_attribute("innerHTML") == pair_name:
-                item.click()
-
-                # Remove focus from the dropdown menu
-                self.driver.execute_script("document.activeElement.blur();")
-
-                return "DONE"
-
-        # If the pair's name, for whatever reason, isn't found, return "PAIR_NOT_FOUND"
-        return "PAIR_NOT_FOUND"
-
-    def get_chart_into_view(self, element) -> tuple[dict, dict]:
-        # This function scrolls the chart into view if for whatever reason it isn't in the view already. This function should never really execute.
-        # It returns the location and size of the element on the webpage, which get used in screenshotting it.
-        # Get the element's location and size
-        location = element.location
-        size = element.size
-
-        distance_from_bottom = self.driver.execute_script(
-            "return window.innerHeight - arguments[0].getBoundingClientRect().bottom",
-            element,
-        )
-        if distance_from_bottom < 0:
-            self.driver.execute_script(
-                "arguments[0].scrollIntoView({block: 'center'})", element
+    def download_chart_with_button(self):
+        # This function clicks the download button to download the chart.
+        download_button_selector = constants.DOWNLOAD_CHART_BUTTON_SELECTOR
+        if not download_button_selector:
+            raise ValueError(
+                "DOWNLOAD_CHART_BUTTON_SELECTOR is not set in environment variables"
             )
 
-            # Update the element's location and size after scrolling
-            location = element.location
-            size = element.size
-
-        return location, size
-
-    def crop_and_save_charts(self, pair: str, location, size):
-        # This function takes the location and size of the element, screenshots  the webpage, and then crops the full screenshot to only leave the
-        # chart intact. It saves both files to /output_images/.
-
-        # Take a full-page screenshot
-        screenshot_path = os.path.join(self.download_dir, "full_screenshot.png")
-        screenshot_path = os.path.join(self.download_dir, "full_screenshot.png")
-        self.driver.save_screenshot(screenshot_path)
-
-        # Open the screenshot and crop the desired area
-        image = Image.open(screenshot_path)
-        left = location["x"] - constants.CHART_X_OFFSET
-        top = location["y"] - constants.CHART_Y_OFFSET
-        right = location["x"] + size["width"] + constants.CHART_X_OFFSET
-        bottom = location["y"] + size["height"] + constants.CHART_Y_OFFSET
-        left = location["x"] - constants.CHART_X_OFFSET
-        top = location["y"] - constants.CHART_Y_OFFSET
-        right = location["x"] + size["width"] + constants.CHART_X_OFFSET
-        bottom = location["y"] + size["height"] + constants.CHART_Y_OFFSET
-        cropped_image = image.crop((left, top, right, bottom))
-
-        # Save the cropped image
-        output_path = os.path.join(self.download_dir, f"heatmap_{pair}.png")
-
-        cropped_image.save(output_path)
+        download_button = WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, download_button_selector))
+        )
+        download_button.click()
 
     def download_chart(self):
         try:
             # Loop indefinitely
             while True:
-                request_url = f"{constants.CHART_URL}?coin=BTC&type=symbol"
-                self.driver.get(request_url)
-                self.prevent_cookie_window()
-                self.hide_loading_elements()
-
-                WebDriverWait(self.driver, 30).until(
-                    lambda driver: self.chart_has_finished_loading()
-                )
-                self.click_symbol_button()
-                time.sleep(1)  # Just to be safe
-
                 # Find each pair in the pair_list property in the list and save its chart
                 for pair in self.pair_list:
-                    # Select the pair from the list
-                    pair_selection = self.select_pair_from_list(pair)
+                    request_url = f"{constants.CHART_URL}?coin={pair}&type=symbol"
+                    self.driver.get(request_url)
+                    self.prevent_cookie_window()
+                    self.hide_loading_elements()
 
-                    # If anything goes wrong with selecting the pair from the list, handle the error by either skipping the pair or refreshing.
-                    if pair_selection == "PAIR_NOT_FOUND":
-                        logger.error(
-                            f"Chart for pair {pair} not found. Consider removing."
-                        )
-                        continue
-
-                    elif pair_selection == "LIST_INCOMPLETE":
-                        break
-
-                    WebDriverWait(self.driver, 30, poll_frequency=1).until(
+                    WebDriverWait(self.driver, 30).until(
                         lambda driver: self.chart_has_finished_loading()
                     )
-                    time.sleep(2)
+                    time.sleep(1)
 
                     # Find the chart element
-                    chart_screenshot_element = WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, constants.CHART_ELEMENT_SELECTOR)
+                    chart_selector = constants.CHART_ELEMENT_SELECTOR
+                    if not chart_selector:
+                        raise ValueError(
+                            "CHART_ELEMENT_SELECTOR is not set in environment variables"
                         )
+
+                    WebDriverWait(self.driver, 10).until(
                         EC.presence_of_element_located(
-                            (By.CSS_SELECTOR, constants.CHART_ELEMENT_SELECTOR)
+                            (By.CSS_SELECTOR, chart_selector)
                         )
                     )
 
-                    # Get the location and size of the element
-                    location, size = self.get_chart_into_view(chart_screenshot_element)
+                    self.download_chart_with_button()
 
-                    # Crop and save the chart
-                    self.crop_and_save_charts(pair, location, size)
+                time.sleep(3)
 
-                else:
-                    break
+                # Clear the download directory
+                self.clear_download_directory()
+
+                break
 
         except Exception as e:
             logger.error(f"Error downloading chart: {e}")
@@ -294,3 +180,48 @@ class Chart:
         finally:
             # Close the driver
             self.driver.quit()
+            pass
+
+    def clear_download_directory(self):
+        """Cleans up the download directory by:
+        1. Removing non-PNG files
+        2. Renaming PNG files to keep only the pair name in the format 'pair.png'
+        """
+
+        for filename in os.listdir(self.download_dir):
+            file_path = os.path.join(self.download_dir, filename)
+
+            # Skip directories
+            if os.path.isdir(file_path):
+                continue
+
+            # Remove non-PNG files
+            if not filename.lower().endswith(".png"):
+                try:
+                    os.unlink(file_path)
+                except Exception as e:
+                    pass
+                continue
+
+            # Process PNG files - extract the pair name and rename
+            try:
+                # Extract the pair name which is between the first and second underscore
+                if "_" in filename:
+                    # Split by underscore and get the second part (index 1)
+                    parts = filename.split("_")
+                    if len(parts) > 1:
+                        # The pair name is in the second part (index 1). When separated again using a space, it's the 0-th element.
+                        pair = parts[1].split(" ")[0]
+                        new_filename = f"heatmap_{pair}.png"
+                        new_filepath = os.path.join(self.download_dir, new_filename)
+
+                        # Remove if a file with the new name already exists
+                        if os.path.exists(new_filepath):
+                            os.unlink(new_filepath)
+
+                        # Rename the file
+                        os.rename(file_path, new_filepath)
+                        logger.info(f"Renamed {filename} to {new_filename}")
+
+            except Exception as e:
+                logger.error(f"Error processing {filename}: {e}")
