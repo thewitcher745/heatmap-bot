@@ -206,7 +206,7 @@ class Chart:
             # Process PNG files - extract the pair name and rename
             try:
                 # Extract the pair name which is between the first and second underscore
-                if "_" in filename:
+                if "_" in filename and "heatmap" not in filename:
                     # Split by underscore and get the second part (index 1)
                     parts = filename.split("_")
                     if len(parts) > 1:
