@@ -23,6 +23,13 @@ class Chart:
         if not os.path.exists(download_dir):
             os.makedirs(download_dir)
 
+        # Set the chrome profile directory.
+        profile_dir = os.path.abspath("chrome_profile")
+        if not os.path.exists(profile_dir):
+            os.makedirs(profile_dir)
+
+        options.add_argument(f"user-data-dir={profile_dir}")
+
         prefs = {
             "download.default_directory": download_dir,
             "download.prompt_for_download": False,
@@ -49,6 +56,68 @@ class Chart:
             self.pair_list = [pair_list]
 
         self.download_dir = download_dir
+
+    def is_logged_in(self) -> bool:
+        """Check if logged in by checking absence of logged-out indicator."""
+        try:
+            # Log current cookies
+            cookies = self.driver.get_cookies()
+            logger.info(f"Current cookies: {[c['name'] for c in cookies]}")
+
+            # Check for logged-out indicator
+            self.driver.find_element(
+                By.CSS_SELECTOR, constants.LOGGED_OUT_INDICATOR_SELECTOR
+            )
+            logger.info("Logged-out indicator found - NOT logged in")
+            return False
+
+        except:
+            logger.info("Logged-out indicator NOT found - logged in")
+            return True
+
+    def login(self):
+        """Logs in through the login page with the credentials given in .env.secret"""
+        login_page_url = constants.LOGIN_URL
+        self.driver.get(login_page_url)
+
+        # Wait for and fill email
+        email_field = WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'input[name="email"]'))
+        )
+        email_field.clear()
+        email_field.send_keys(constants.COINGLASS_EMAIL)
+
+        # Wait for and fill password
+        password_field = WebDriverWait(self.driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 'input[name="password"]'))
+        )
+        password_field.clear()
+        password_field.send_keys(constants.COINGLASS_PASSWORD)
+
+        # Click login button
+        login_button = self.driver.find_element(
+            By.XPATH, constants.LOGIN_SUBMIT_BUTTON_SELECTOR_XPATH
+        )
+        login_button.click()
+
+        # Wait for login to complete by checking if logged-out indicator disappears
+        WebDriverWait(self.driver, 10).until_not(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, constants.LOGGED_OUT_INDICATOR_SELECTOR)
+            )
+        )
+
+        logger.info("Login successful")
+
+    def ensure_logged_in(self, referral_link: str):
+        """Ensures the user is logged in, then navigates back to the page that referred to the login."""
+        if not self.is_logged_in():
+            logger.warning("Not logged in, trying login again.")
+            self.login()
+            self.driver.get(referral_link)
+
+        else:
+            print("Already logged in.")
 
     def click_element(self, css_selector):
         # Simply click on an element given its CSS selector. Replace : and - characters with \: and \-
@@ -103,17 +172,15 @@ class Chart:
         self.driver.execute_script(script2)
 
     def chart_has_finished_loading(self):
-        # Finds the elements with z-index -1 and opacity 0, which would be the loading blur and the spinner if the chart has finished loading.
-        # Also checks if the canvas element exists.
+        """
+        Finds the download button element, and checks if it's disabled. If the button element is not
+        found or is disabled, returns False.
+        """
         try:
             # JavaScript function to check if the chart has loaded
-            js_script = """
-                    var chartCanvases = document.querySelectorAll("canvas");
-                    var isLoadingComplete = Array.from(document.querySelectorAll('*')).filter(el => {
-                        const style = window.getComputedStyle(el);
-                        return style.zIndex === '-1' && style.opacity !== '0';
-                    });
-                    return (chartCanvases.length > 0) && (isLoadingComplete.length >= 2);
+            js_script = f"""
+                        var button = document.querySelector('{constants.DOWNLOAD_CHART_BUTTON_SELECTOR}');
+                        return (button && !button.classList.contains('Mui-disabled'))
                     """
 
             # Execute the JavaScript and return the result
@@ -144,8 +211,10 @@ class Chart:
                 for pair in self.pair_list:
                     request_url = f"{constants.CHART_URL}?coin={pair}&type=symbol"
                     self.driver.get(request_url)
+                    self.ensure_logged_in(request_url)
                     self.prevent_cookie_window()
                     self.hide_loading_elements()
+                    print("Waiting for the chart to load...")
 
                     WebDriverWait(self.driver, 30).until(
                         lambda driver: self.chart_has_finished_loading()
@@ -154,16 +223,17 @@ class Chart:
 
                     # Find the chart element
                     chart_selector = constants.CHART_ELEMENT_SELECTOR
-                    if not chart_selector:
-                        raise ValueError(
-                            "CHART_ELEMENT_SELECTOR is not set in environment variables"
-                        )
 
                     WebDriverWait(self.driver, 10).until(
                         EC.presence_of_element_located(
                             (By.CSS_SELECTOR, chart_selector)
                         )
                     )
+
+                    if not chart_selector:
+                        raise ValueError(
+                            "CHART_ELEMENT_SELECTOR is not set in environment variables"
+                        )
 
                     self.download_chart_with_button()
 
@@ -176,11 +246,6 @@ class Chart:
 
         except Exception as e:
             logger.error(f"Error downloading chart: {e}")
-
-        finally:
-            # Close the driver
-            self.driver.quit()
-            pass
 
     def clear_download_directory(self):
         """Cleans up the download directory by:

@@ -1,6 +1,7 @@
 .idea/
 .env.secret
 output_images/
+chrome_profile/
 *.pyc
 */__pycache__
 /__pycache__
