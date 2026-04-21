@@ -247,6 +247,10 @@ class Chart:
         except Exception as e:
             logger.error(f"Error downloading chart: {e}")
 
+        finally:
+            self.driver.quit()
+            pass
+
     def clear_download_directory(self):
         """Cleans up the download directory by:
         1. Removing non-PNG files
