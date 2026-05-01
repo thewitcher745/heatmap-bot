@@ -325,8 +325,8 @@ async def send_periodic_chart(context: ContextTypes.DEFAULT_TYPE) -> None:
         ]
 
         # Initialize the Chart class and download the chart
-        chart = Chart(pair_list)
-        chart.download_chart()
+        chart = Chart(headless_mode=True)
+        chart.download_chart(pair_list)
 
         for pair in pair_list:
             # Skip placeholder pairs
@@ -357,8 +357,8 @@ async def send_periodic_chart(context: ContextTypes.DEFAULT_TYPE) -> None:
             return
 
         # Initialize the Chart class and download the chart
-        chart = Chart(pair)
-        chart.download_chart()
+        chart = Chart(headless_mode=True)
+        chart.download_chart(pair)
 
         caption = get_image_caption(
             pair,
@@ -401,8 +401,8 @@ async def handle_current_chart(
         chat_id=chat_id, text=f"⏳ Generating {pairs} chart, please wait..."
     )
 
-    chart = Chart(pairs)
-    chart.download_chart()
+    chart = Chart(headless_mode=True)
+    chart.download_chart(pairs)
 
     config = load_config()
     for pair in pairs:

@@ -12,7 +12,7 @@ from utils.logger import logger
 
 
 class Chart:
-    def __init__(self, pair_list: list | str, headless_mode: bool = False):
+    def __init__(self, headless_mode: bool = False):
         options = webdriver.ChromeOptions()
 
         if headless_mode:
@@ -48,12 +48,6 @@ class Chart:
 
         self.download_dir = download_dir
         self.driver = driver
-
-        # If a single pair is given instead of a list of pairs, convert it to a list to standardize it.
-        if isinstance(pair_list, list):
-            self.pair_list = pair_list
-        else:
-            self.pair_list = [pair_list]
 
         self.download_dir = download_dir
 
@@ -203,12 +197,18 @@ class Chart:
         )
         download_button.click()
 
-    def download_chart(self):
+    def download_chart(self, pair_list: list[str] | str):
+        # If a single pair is given instead of a list of pairs, convert it to a list to standardize it.
+        if isinstance(pair_list, list):
+            pair_list = pair_list
+        else:
+            pair_list = [pair_list]
+
         try:
             # Loop indefinitely
             while True:
                 # Find each pair in the pair_list property in the list and save its chart
-                for pair in self.pair_list:
+                for pair in pair_list:
                     request_url = f"{constants.CHART_URL}?coin={pair}&type=symbol"
                     self.driver.get(request_url)
                     self.ensure_logged_in(request_url)
