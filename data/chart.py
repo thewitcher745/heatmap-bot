@@ -74,34 +74,84 @@ class Chart:
         login_page_url = constants.LOGIN_URL
         self.driver.get(login_page_url)
 
-        # Wait for and fill email
+        # Wait for and fill email (do this once)
         email_field = WebDriverWait(self.driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, 'input[name="email"]'))
         )
         email_field.clear()
         email_field.send_keys(constants.COINGLASS_EMAIL)
 
-        # Wait for and fill password
-        password_field = WebDriverWait(self.driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, 'input[name="password"]'))
-        )
-        password_field.clear()
-        password_field.send_keys(constants.COINGLASS_PASSWORD)
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Password attempt {attempt + 1}/{max_retries}")
 
-        # Click login button
-        login_button = self.driver.find_element(
-            By.XPATH, constants.LOGIN_SUBMIT_BUTTON_SELECTOR_XPATH
-        )
-        login_button.click()
+                # Locate password field
+                password_field = WebDriverWait(self.driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, 'input[name="password"]')
+                    )
+                )
 
-        # Wait for login to complete by checking if logged-out indicator disappears
-        WebDriverWait(self.driver, 10).until_not(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, constants.LOGGED_OUT_INDICATOR_SELECTOR)
-            )
-        )
+                # Clear and type password with special sequence
+                password_field.clear()
+                password = constants.COINGLASS_PASSWORD
 
-        logger.info("Login successful")
+                # Type first 5 characters slowly
+                for char in password[:5]:
+                    password_field.send_keys(char)
+                    time.sleep(0.15)
+
+                # Short pause
+                time.sleep(1)
+
+                # Type rest
+                password_field.send_keys(password[5:])
+
+                # Click login button (use WebDriverWait for better reliability)
+                login_button = WebDriverWait(self.driver, 5).until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, constants.LOGIN_SUBMIT_BUTTON_SELECTOR_XPATH)
+                    )
+                )
+
+                # Use JavaScript click as fallback
+                try:
+                    login_button.click()
+                except:
+                    self.driver.execute_script("arguments[0].click();", login_button)
+
+                # Check if login was successful
+                WebDriverWait(self.driver, 10).until_not(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, constants.LOGGED_OUT_INDICATOR_SELECTOR)
+                    )
+                )
+
+                return True
+
+            except Exception as e:
+                logger.warning(f"Login attempt {attempt + 1} failed: {str(e)}")
+
+                if attempt == max_retries - 1:
+                    logger.error("All login attempts failed")
+                    raise
+
+                # Don't refresh on last attempt
+                if attempt < max_retries - 1:
+                    time.sleep(1)
+                    # Refresh page to get clean state
+                    self.driver.refresh()
+                    time.sleep(1)
+
+                    # Re-enter email after refresh
+                    email_field = WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located(
+                            (By.CSS_SELECTOR, 'input[name="email"]')
+                        )
+                    )
+                    email_field.clear()
+                    email_field.send_keys(constants.COINGLASS_EMAIL)
 
     def ensure_logged_in(self, referral_link: str):
         """Ensures the user is logged in, then navigates back to the page that referred to the login."""
